@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "student"] },
+        "program": { "type": "string", "description": "Undergraduate program for students" },
+        "isBlocked": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "isBlocked"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Metadata for uploaded PDFs",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "downloadURL": { "type": "string" },
+        "fileName": { "type": "string" },
+        "uploadedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "downloadCount": { "type": "number" }
+      },
+      "required": ["title", "category", "downloadURL", "fileName", "uploadedBy", "createdAt"]
+    },
+    "Download": {
+      "title": "Download",
+      "description": "Download events",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "docId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "docId", "date"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "System activity logs for analytics",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["upload", "login"] },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "userId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "PDF document metadata"
+    },
+    "/logs/{logId}": {
+      "schema": "Log",
+      "description": "Activity logs"
+    },
+    "/downloads/{downloadId}": {
+      "schema": "Download",
+      "description": "Download tracking"
+    }
+  }
+}

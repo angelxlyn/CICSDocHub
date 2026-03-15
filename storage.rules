@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /documents/{allPaths=**} {
+      // Allow authenticated users to read documents if they are not blocked
+      // Note: Storage rules don't have access to Firestore data directly without custom claims or specific metadata.
+      // For simplicity in this sprint, we check authentication.
+      allow read: if request.auth != null;
+      
+      // Only admins can upload/delete documents
+      allow write: if request.auth != null && 
+        (request.auth.token.email == 'angellyn.tolentino@neu.edu.ph' || 
+         request.auth.token.role == 'admin');
+    }
+  }
+}

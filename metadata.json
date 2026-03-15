@@ -1,0 +1,5 @@
+{
+  "name": "CICS DocHub",
+  "description": "A secure document management system for the College of Information and Computing Studies, featuring Google Auth for @neu.edu.ph accounts, role-based access, featuring PDF uploads, student program selection, and document analytics.",
+  "requestFramePermissions": []
+}

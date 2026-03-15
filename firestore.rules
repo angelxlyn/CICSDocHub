@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - role: string (required, 'admin' | 'student')
+    //   - program: string (optional)
+    //   - isBlocked: boolean (required)
+    //   - createdAt: timestamp (required)
+    //   - lastActive: timestamp (optional)
+    //
+    // Collection: documents
+    // Document ID: {docId}
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - category: string (optional)
+    //   - categories: list (required, programs)
+    //   - downloadURL: string (required)
+    //   - fileName: string (required)
+    //   - fileSize: number (optional)
+    //   - fileType: string (optional)
+    //   - uploadedBy: string (required, userId)
+    //   - uploadedByName: string (optional)
+    //   - timestamp: timestamp (required)
+    //   - downloadCount: number (required)
+    //
+    // Collection: logs
+    // Document ID: {logId}
+    // Fields:
+    //   - userId: string (required)
+    //   - userEmail: string (optional)
+    //   - action: string (required)
+    //   - documentId: string (optional)
+    //   - documentTitle: string (optional)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: downloads
+    // Document ID: {downloadId}
+    // Fields:
+    //   - uid: string (required)
+    //   - docId: string (required)
+    //   - date: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && 
+             request.auth.token.email != null && 
+             request.auth.token.email_verified == true;
+    }
+
+    function isPrimaryAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == 'angellyn.tolentino@neu.edu.ph' ||
+              request.auth.uid == 'aTLQW3vFP2crhY4Ge8Sy02dcOv72');
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        isPrimaryAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isNotBlocked() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBlocked == false;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && (isEmailVerified() || isPrimaryAdmin());
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.isBlocked == resource.data.isBlocked) || 
+        (isAdmin() && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.isBlocked != resource.data.isBlocked) ||
+        isPrimaryAdmin()
+      );
+    }
+
+    // Documents
+    match /documents/{docId} {
+      allow read: if isAuthenticated() && isNotBlocked();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // Activity Logs
+    match /logs/{logId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isNotBlocked();
+    }
+
+    // Downloads
+    match /downloads/{downloadId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isNotBlocked();
+    }
+  }
+}
