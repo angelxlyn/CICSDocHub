@@ -10,7 +10,7 @@ export interface UserProfile {
   bio?: string;
   isBlocked: boolean;
   createdAt: any;
-  lastActive?: any;
+  lastSeen?: any;
 }
 
 export interface DocumentMetadata {
@@ -25,6 +25,7 @@ export interface DocumentMetadata {
   fileType?: string;
   uploadedBy: string;
   uploadedByName?: string;
+  driveFileId?: string;
   createdAt?: any;
   timestamp: any;
   downloadCount: number;

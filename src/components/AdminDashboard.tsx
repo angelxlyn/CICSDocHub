@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { 
   Timestamp,
-  where,
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { ActivityLog, PROGRAMS, UserProfile } from "../types";
+import { ActivityLog, UserProfile } from "../types";
 import { 
   XAxis, 
   YAxis, 
@@ -28,14 +26,12 @@ import {
   startOfDay, 
   endOfDay, 
   eachDayOfInterval,
-  isSameDay
 } from "date-fns";
 
 import { dataService } from "../services/dataService";
 
 export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [allTimeLogs, setAllTimeLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -74,18 +70,12 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
     }, start, end);
 
     const unsubUsers = dataService.subscribeToUsers((allUsers) => {
-      console.log("Dashboard: Received users update, count:", allUsers.length);
       setUsers(allUsers);
-    });
-
-    const unsubAllLogs = dataService.subscribeToLogs((allLogs) => {
-      setAllTimeLogs(allLogs);
     });
 
     return () => {
       unsubLogs();
       unsubUsers();
-      unsubAllLogs();
     };
   }, [timeRange, customRange]);
 
@@ -144,28 +134,34 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
   };
 
   const stats = {
-    totalViews: allTimeLogs.filter(l => l.action === "view").length,
-    totalUploads: allTimeLogs.filter(l => l.action === "upload").length,
+    totalViews: logs.filter(l => l.action === "view").length,
+    totalUploads: logs.filter(l => l.action === "upload").length,
     onlineNow: users.filter(u => {
-      if (!u.lastActive) return false;
+      if (!u.lastSeen) return false;
       
       // Handle both Firestore Timestamp and plain objects (from local fallback)
-      const lastActiveDate = typeof u.lastActive.toDate === 'function' 
-        ? u.lastActive.toDate() 
-        : new Date((u.lastActive.seconds || 0) * 1000);
+      const lastSeenDate = typeof u.lastSeen.toDate === 'function' 
+        ? u.lastSeen.toDate() 
+        : new Date((u.lastSeen.seconds || 0) * 1000);
         
       // Online if active in the last 5 minutes
-      return (Date.now() - lastActiveDate.getTime()) < 5 * 60 * 1000;
+      return (Date.now() - lastSeenDate.getTime()) < 5 * 60 * 1000;
     }).length,
     activeUsers: users.length, // Total registered users
     activeThisPeriod: users.filter(u => {
-      const activeTimestamp = u.lastActive || u.createdAt;
-      if (!activeTimestamp) return false;
+      // Find the latest timestamp among lastSeen and createdAt
+      const timestamps = [u.lastSeen, u.createdAt].filter(Boolean);
+      if (timestamps.length === 0) return false;
       
-      const activeDate = typeof activeTimestamp.toDate === 'function' 
-        ? activeTimestamp.toDate() 
-        : new Date((activeTimestamp.seconds || 0) * 1000);
-        
+      const dates = timestamps.map(ts => 
+        typeof ts.toDate === 'function' ? ts.toDate() : new Date((ts.seconds || 0) * 1000)
+      );
+      
+      const latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      
+      // If latest date is 1970 (0), it's not a valid activity for the period
+      if (latestDate.getTime() === 0) return false;
+      
       let start: Date;
       if (timeRange === "daily") {
         start = subDays(new Date(), 1);
@@ -176,7 +172,7 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
       } else {
         start = startOfDay(new Date(customRange.start));
       }
-      return activeDate >= start;
+      return latestDate >= start;
     }).length
   };
 
@@ -222,9 +218,23 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard 
-          title="Total Views" 
+          title="Online Now" 
+          value={stats.onlineNow} 
+          icon={
+            <div className="relative">
+              <Users className="text-emerald-600 dark:text-emerald-400" />
+              {stats.onlineNow > 0 && (
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-emerald-50 dark:border-zinc-900 animate-pulse"></div>
+              )}
+            </div>
+          } 
+          color="bg-emerald-50 dark:bg-emerald-500/10"
+          subtitle="Active in last 5m"
+        />
+        <StatCard 
+          title="Views" 
           value={stats.totalViews} 
           icon={<ExternalLink className="text-purple-600 dark:text-purple-400" />} 
           color="bg-purple-50 dark:bg-purple-500/10"
@@ -232,15 +242,15 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
         <StatCard 
           title="New Uploads" 
           value={stats.totalUploads} 
-          icon={<Upload className="text-emerald-600 dark:text-emerald-400" />} 
-          color="bg-emerald-50 dark:bg-emerald-500/10"
+          icon={<Upload className="text-blue-600 dark:text-blue-400" />} 
+          color="bg-blue-50 dark:bg-blue-500/10"
         />
         <StatCard 
           title="Active Users" 
           value={stats.activeThisPeriod} 
           icon={<Users className="text-indigo-600 dark:text-indigo-400" />} 
           color="bg-indigo-50 dark:bg-indigo-500/10"
-          subtitle={`Out of ${stats.activeUsers} total`}
+          subtitle={timeRange === 'daily' ? 'Last 24 hours' : timeRange === 'weekly' ? 'Last 7 days' : timeRange === 'monthly' ? 'Last 30 days' : 'Custom range'}
         />
       </div>
 

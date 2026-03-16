@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Timestamp
-} from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { DocumentMetadata, UserProfile, PROGRAMS, PROGRAM_ABBREVIATIONS, DOCUMENT_CATEGORIES } from "../types";
+import { DocumentMetadata, UserProfile, DOCUMENT_CATEGORIES } from "../types";
 import { 
   Search, 
   FileText, 
@@ -11,7 +7,6 @@ import {
   Calendar,
   User as UserIcon,
   Loader2,
-  GraduationCap,
   ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";

@@ -28,11 +28,11 @@ export default function AdminDocuments() {
     return () => unsubscribe();
   }, []);
 
-  const handleDelete = async (docId: string) => {
-    if (!window.confirm("Are you sure you want to delete this document? This action cannot be undone.")) return;
+  const handleDelete = async (docId: string, docTitle: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${docTitle}"? This action cannot be undone.`)) return;
     
     try {
-      await dataService.deleteDocument(docId);
+      await dataService.deleteDocument(docId, docTitle);
       setDocs(docs.filter(d => d.id !== docId));
     } catch (error) {
       console.error("Delete failed", error);
@@ -161,7 +161,7 @@ export default function AdminDocuments() {
                           <ExternalLink size={18} />
                         </button>
                         <button
-                          onClick={() => handleDelete(doc.id)}
+                          onClick={() => handleDelete(doc.id, doc.title)}
                           className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                           title="Delete Document"
                         >

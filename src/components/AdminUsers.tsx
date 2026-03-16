@@ -39,7 +39,12 @@ export default function AdminUsers() {
 
   const currentUserEmail = auth.currentUser?.email;
   const isPrimaryAdmin = currentUserEmail === 'angellyn.tolentino@neu.edu.ph' || 
+                         currentUserEmail === 'jcesperanza@neu.edu.ph' ||
                          auth.currentUser?.uid === 'aTLQW3vFP2crhY4Ge8Sy02dcOv72';
+
+  const isUserPrimaryAdmin = (email: string | null | undefined) => {
+    return email === 'angellyn.tolentino@neu.edu.ph' || email === 'jcesperanza@neu.edu.ph';
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -185,7 +190,7 @@ export default function AdminUsers() {
                           referrerPolicy="no-referrer"
                           alt=""
                         />
-                        {user.lastActive && (Date.now() - (typeof user.lastActive.toDate === 'function' ? user.lastActive.toDate() : new Date((user.lastActive.seconds || 0) * 1000)).getTime()) < 5 * 60 * 1000 && (
+                        {user.lastSeen && (Date.now() - (typeof user.lastSeen.toDate === 'function' ? user.lastSeen.toDate() : new Date((user.lastSeen.seconds || 0) * 1000)).getTime()) < 5 * 60 * 1000 && (
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" title="Online" />
                         )}
                       </div>
@@ -224,11 +229,12 @@ export default function AdminUsers() {
                         <>
                           <button
                             onClick={() => toggleBlockStatus(user)}
+                            disabled={isUserPrimaryAdmin(user.email)}
                             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                               user.isBlocked 
                                 ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
                                 : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white'
-                            }`}
+                            } ${isUserPrimaryAdmin(user.email) ? 'opacity-50 cursor-not-allowed' : ''}`}
                             title={user.isBlocked ? "Unblock User" : "Block User"}
                           >
                             {user.isBlocked ? <UserCheck size={14} /> : <UserMinus size={14} />}
@@ -251,7 +257,7 @@ export default function AdminUsers() {
                           <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
                             <Shield size={14} /> Admin
                           </span>
-                          {isPrimaryAdmin && user.uid !== auth.currentUser?.uid && (
+                          {isPrimaryAdmin && user.uid !== auth.currentUser?.uid && !isUserPrimaryAdmin(user.email) && (
                             <button
                               onClick={() => setRevokingUser(user)}
                               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600 dark:hover:text-white transition-all"
@@ -361,11 +367,12 @@ export default function AdminUsers() {
                   <div className="mt-6 flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={() => toggleBlockStatus(selectedUser)}
+                      disabled={isUserPrimaryAdmin(selectedUser.email)}
                       className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                         selectedUser.isBlocked 
                           ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
                           : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white'
-                      }`}
+                      } ${isUserPrimaryAdmin(selectedUser.email) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {selectedUser.isBlocked ? <UserCheck size={18} /> : <UserMinus size={18} />}
                       {selectedUser.isBlocked ? 'Unblock User' : 'Block User'}
@@ -382,7 +389,7 @@ export default function AdminUsers() {
                     )}
                   </div>
                 ) : (
-                  isPrimaryAdmin && selectedUser.uid !== auth.currentUser?.uid && (
+                  isPrimaryAdmin && selectedUser.uid !== auth.currentUser?.uid && !isUserPrimaryAdmin(selectedUser.email) && (
                     <div className="mt-8">
                       <button
                         onClick={() => setRevokingUser(selectedUser)}

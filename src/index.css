@@ -1,3 +1,9 @@
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
+
+/* Hide browser's default password reveal button */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}

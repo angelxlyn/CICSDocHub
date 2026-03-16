@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "../lib/firebase";
 import { PROGRAMS, PROGRAM_ABBREVIATIONS, DOCUMENT_CATEGORIES } from "../types";
 import { 
-  Upload, 
+  Upload as FileUpload, 
   FileText, 
   CheckCircle2, 
   Loader2, 
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  Link as LinkIcon,
+  Database
 } from "lucide-react";
 
 import { motion } from "motion/react";
@@ -15,6 +17,8 @@ import { dataService } from "../services/dataService";
 
 export default function AdminUpload() {
   const [externalUrl, setExternalUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<'link' | 'file'>('file');
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(DOCUMENT_CATEGORIES[0]);
@@ -23,6 +27,42 @@ export default function AdminUpload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [isDriveConnected, setIsDriveConnected] = useState(false);
+  const [checkingDrive, setCheckingDrive] = useState(true);
+
+  useEffect(() => {
+    checkDriveStatus();
+    
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+        setIsDriveConnected(true);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const checkDriveStatus = async () => {
+    try {
+      const res = await fetch('/api/auth/google/status');
+      const data = await res.json();
+      setIsDriveConnected(data.connected);
+    } catch (err) {
+      console.error("Failed to check drive status:", err);
+    } finally {
+      setCheckingDrive(false);
+    }
+  };
+
+  const connectGoogleDrive = async () => {
+    try {
+      const res = await fetch('/api/auth/google/url');
+      const { url } = await res.json();
+      window.open(url, 'google_auth', 'width=600,height=700');
+    } catch (err) {
+      setError("Failed to get connection URL");
+    }
+  };
 
   const toggleProgram = (p: string) => {
     setSelectedPrograms(prev => 
@@ -40,7 +80,9 @@ export default function AdminUpload() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!externalUrl || !title || selectedPrograms.length === 0 || uploading) return;
+    if (uploadMode === 'link' && !externalUrl) return;
+    if (uploadMode === 'file' && !selectedFile) return;
+    if (!title || selectedPrograms.length === 0 || uploading) return;
 
     const user = auth.currentUser;
     if (!user) {
@@ -53,7 +95,42 @@ export default function AdminUpload() {
     setError("");
 
     try {
-      setUploadProgress(30);
+      let finalUrl = externalUrl;
+      let fileName = "External Link";
+      let fileSize = 0;
+      let fileType = "Link";
+      let driveFileId: string | undefined = undefined;
+
+      if (uploadMode === 'file' && selectedFile) {
+        if (!isDriveConnected) {
+          setError("Please connect your Google Drive first.");
+          setUploading(false);
+          return;
+        }
+
+        setUploadProgress(10);
+        
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        const uploadRes = await fetch('/api/upload/drive', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          throw new Error(errData.error || "Failed to upload to Google Drive");
+        }
+
+        const driveData = await uploadRes.json();
+        finalUrl = driveData.webViewLink;
+        driveFileId = driveData.id;
+        fileName = selectedFile.name;
+        fileSize = selectedFile.size;
+        fileType = selectedFile.type || "Document";
+        setUploadProgress(60);
+      }
       
       // Save metadata to Firestore
       await dataService.uploadDocument({
@@ -61,10 +138,11 @@ export default function AdminUpload() {
         description,
         category,
         categories: selectedPrograms,
-        downloadURL: externalUrl,
-        fileName: "External Link",
-        fileSize: 0,
-        fileType: "Link",
+        downloadURL: finalUrl,
+        fileName,
+        fileSize,
+        fileType,
+        driveFileId,
         uploadedBy: user.uid,
         uploadedByName: user.displayName || user.email || "Admin User",
       });
@@ -74,6 +152,7 @@ export default function AdminUpload() {
       
       // Reset form
       setExternalUrl("");
+      setSelectedFile(null);
       setTitle("");
       setDescription("");
       setCategory(DOCUMENT_CATEGORIES[0]);
@@ -90,46 +169,116 @@ export default function AdminUpload() {
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Publish Documents</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">Add new Google Drive resources to the department library.</p>
+      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Publish Documents</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Add new Google Drive resources to the department library.</p>
+        </div>
+        
+        {!checkingDrive && (
+          <button
+            type="button"
+            onClick={connectGoogleDrive}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              isDriveConnected 
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+            }`}
+          >
+            <Database size={16} />
+            {isDriveConnected ? 'Drive Connected' : 'Connect Google Drive'}
+          </button>
+        )}
       </header>
 
       <form onSubmit={handleUpload} className="space-y-6">
         <div className="bg-white dark:bg-zinc-900 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm transition-colors">
           <div className="mb-8">
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-              Document Link (Google Drive)
-            </label>
-            
-            <div className="space-y-2">
-              <input
-                type="url"
-                required
-                placeholder="Paste Google Drive link here..."
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                value={externalUrl}
-                onChange={(e) => {
-                  let val = e.target.value;
-                  // Auto-convert Google Drive export links to view links for better compatibility
-                  if (val.includes('drive.google.com') && val.includes('export=download')) {
-                    val = val.replace('export=download', 'view');
-                  }
-                  setExternalUrl(val);
-                }}
-                disabled={uploading}
-              />
-              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl">
-                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-[10px] text-amber-800 dark:text-amber-300 font-bold uppercase tracking-wider">Important for G-Drive:</p>
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                    1. Set sharing to <span className="font-bold">"Anyone with the link"</span>.<br />
-                    2. Documents will open in a <span className="font-bold">new tab</span> for students.
-                  </p>
+            <div className="flex items-center gap-4 mb-4 p-1 bg-slate-100 dark:bg-white/5 rounded-xl w-fit">
+              <button
+                type="button"
+                onClick={() => setUploadMode('file')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${uploadMode === 'file' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                Upload File
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMode('link')}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${uploadMode === 'link' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                External Link
+              </button>
+            </div>
+
+            {uploadMode === 'file' ? (
+              <div className="space-y-4">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Select Document (PDF, DOCX, etc.)
+                </label>
+                <div className="relative group">
+                  <input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        if (!title) setTitle(file.name.split('.')[0]);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={uploading}
+                  />
+                  <div className={`
+                    w-full py-10 px-4 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all
+                    ${selectedFile ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/5' : 'border-slate-200 dark:border-white/10 group-hover:border-indigo-400 dark:group-hover:border-indigo-500/50'}
+                  `}>
+                    <div className={`p-3 rounded-full ${selectedFile ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                      <FileUpload size={24} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                        {selectedFile ? selectedFile.name : 'Click or drag to upload'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size: 25MB'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Document Link (Google Drive)
+                </label>
+                <input
+                  type="url"
+                  required
+                  placeholder="Paste Google Drive link here..."
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+                  value={externalUrl}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (val.includes('drive.google.com') && val.includes('export=download')) {
+                      val = val.replace('export=download', 'view');
+                    }
+                    setExternalUrl(val);
+                  }}
+                  disabled={uploading}
+                />
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-amber-800 dark:text-amber-300 font-bold uppercase tracking-wider">Important for G-Drive:</p>
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                      1. Set sharing to <span className="font-bold">"Anyone with the link"</span>.<br />
+                      2. Documents will open in a <span className="font-bold">new tab</span> for students.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -243,7 +392,7 @@ export default function AdminUpload() {
 
         <button
           type="submit"
-          disabled={uploading || !externalUrl || !title || selectedPrograms.length === 0}
+          disabled={uploading || (uploadMode === 'link' ? !externalUrl : !selectedFile) || !title || selectedPrograms.length === 0}
           className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 flex items-center justify-center gap-3"
         >
           {uploading ? (
@@ -253,7 +402,7 @@ export default function AdminUpload() {
             </>
           ) : (
             <>
-              <Upload size={22} />
+            <FileUpload size={22} />
               Publish Document
             </>
           )}

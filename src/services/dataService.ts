@@ -10,11 +10,11 @@ import {
   onSnapshot,
   doc, 
   updateDoc, 
-  increment,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore";
-import { db, auth } from "../lib/firebase";
+import { db, auth, storage } from "../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";
 import { DocumentMetadata, UserProfile, ActivityLog, PROGRAMS } from "../types";
 
@@ -185,11 +185,29 @@ class DataService {
     return () => clearInterval(interval);
   }
 
-  async deleteDocument(docId: string) {
+  async deleteDocument(docId: string, docTitle: string = "Unknown Document") {
     if (this.isFirebaseReady()) {
       try {
+        // Get the document first to check for driveFileId
+        const docRef = doc(db, "documents", docId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as DocumentMetadata;
+          if (data.driveFileId) {
+            try {
+              await fetch(`/api/upload/drive/${data.driveFileId}`, {
+                method: 'DELETE'
+              });
+            } catch (driveErr) {
+              console.error("Failed to delete from Google Drive:", driveErr);
+              // We continue even if Drive delete fails to ensure Firestore is cleaned up
+            }
+          }
+        }
+
         const { deleteDoc } = await import("firebase/firestore");
-        await deleteDoc(doc(db, "documents", docId));
+        await deleteDoc(docRef);
       } catch (e: any) {
         if (e.code === 'permission-denied') {
           handleFirestoreError(e, OperationType.DELETE, `documents/${docId}`);
@@ -203,14 +221,6 @@ class DataService {
       const docs = JSON.parse(local);
       localStorage.setItem("dochub_docs", JSON.stringify(docs.filter((d: any) => d.id !== docId)));
     }
-    
-    // Try to find the doc title for logging
-    let docTitle = "Unknown Document";
-    if (local) {
-      const docs = JSON.parse(local);
-      const deletedDoc = docs.find((d: any) => d.id === docId);
-      if (deletedDoc) docTitle = deletedDoc.title;
-    }
 
     this.logActivity({
       userId: auth.currentUser?.uid || "local-admin",
@@ -220,6 +230,22 @@ class DataService {
       documentTitle: docTitle,
       timestamp: Timestamp.now()
     });
+  }
+
+  async uploadFile(file: File): Promise<string> {
+    if (this.isFirebaseReady()) {
+      try {
+        const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+      } catch (e: any) {
+        console.error("Firebase storage upload failed:", e);
+        throw e;
+      }
+    }
+    // For local fallback, we'll just return a mock URL
+    return URL.createObjectURL(file);
   }
 
   async uploadDocument(docData: Omit<DocumentMetadata, "id" | "timestamp" | "downloadCount">) {
@@ -238,8 +264,8 @@ class DataService {
           downloadCount: 0
         });
 
-        // Log activity (don't await to speed up UI)
-        this.logActivity({
+        // Log activity (await to ensure persistence)
+        await this.logActivity({
           userId: auth.currentUser?.uid || "local-admin",
           userEmail: auth.currentUser?.email || "admin@neu.edu.ph",
           action: "upload",
@@ -466,10 +492,11 @@ class DataService {
     if (this.isFirebaseReady()) {
       try {
         const userRef = doc(db, "users", uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          await updateDoc(userRef, { lastActive: serverTimestamp() });
-        }
+        // Use setDoc with merge to ensure it works even if doc doesn't exist
+        // and avoid unnecessary getDoc. lastSeen is never reset to 0.
+        await setDoc(userRef, { 
+          lastSeen: serverTimestamp()
+        }, { merge: true });
       } catch (e: any) {
         if (e.code === 'permission-denied') {
           handleFirestoreError(e, OperationType.UPDATE, `users/${uid}`);

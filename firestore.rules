@@ -71,6 +71,7 @@ service cloud.firestore {
     function isPrimaryAdmin() {
       return isAuthenticated() && 
              (request.auth.token.email == 'angellyn.tolentino@neu.edu.ph' ||
+              request.auth.token.email == 'jcesperanza@neu.edu.ph' ||
               request.auth.uid == 'aTLQW3vFP2crhY4Ge8Sy02dcOv72');
     }
     
