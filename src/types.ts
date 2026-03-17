@@ -42,7 +42,7 @@ export interface ActivityLog {
   id: string;
   userId: string;
   userEmail?: string;
-  action: 'upload' | 'login' | 'download' | 'view' | 'block' | 'unblock' | 'delete' | 'role_update';
+  action: 'upload' | 'login' | 'download' | 'view' | 'block' | 'unblock' | 'delete' | 'role_update' | 'update';
   userRole?: UserRole;
   documentId?: string;
   documentTitle?: string;

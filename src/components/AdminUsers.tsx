@@ -129,42 +129,42 @@ export default function AdminUsers() {
 
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden transition-colors">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
                 <th 
-                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap border-r border-slate-100 dark:border-white/5"
                   onClick={() => handleSort('displayName')}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     User <SortIcon column="displayName" />
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap border-r border-slate-100 dark:border-white/5"
                   onClick={() => handleSort('program')}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     Program <SortIcon column="program" />
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap border-r border-slate-100 dark:border-white/5"
                   onClick={() => handleSort('isBlocked')}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     Status <SortIcon column="isBlocked" />
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap border-r border-slate-100 dark:border-white/5"
                   onClick={() => handleSort('createdAt')}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     Joined <SortIcon column="createdAt" />
                   </div>
                 </th>
-                <th className="px-4 py-4 text-right whitespace-nowrap">Actions</th>
+                <th className="px-4 py-4 text-center whitespace-nowrap w-px">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -181,7 +181,7 @@ export default function AdminUsers() {
                   className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                   onClick={() => setSelectedUser(user)}
                 >
-                  <td className="px-4 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap border-r border-slate-100 dark:border-white/5">
                     <div className="flex items-center gap-4 min-w-[180px]">
                       <div className="relative shrink-0">
                         <img 
@@ -203,19 +203,19 @@ export default function AdminUsers() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap text-center border-r border-slate-100 dark:border-white/5">
                     <span className="text-sm text-slate-600 dark:text-slate-400 font-medium" title={user.program}>
                       {user.program ? (PROGRAM_ABBREVIATIONS[user.program] || user.program) : "N/A"}
                     </span>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap text-center border-r border-slate-100 dark:border-white/5">
                     <span className={`text-xs font-bold px-3 py-1 rounded-md ${
                       user.isBlocked ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                     }`}>
                       {user.isBlocked ? 'Blocked' : 'Authorized'}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  <td className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap text-center border-r border-slate-100 dark:border-white/5">
                   {user.createdAt ? (
                     format(
                       new Date((user.createdAt.seconds || 0) * 1000), 
@@ -223,7 +223,7 @@ export default function AdminUsers() {
                     )
                   ) : "N/A"}
                 </td>
-                  <td className="px-4 py-4 text-right whitespace-nowrap">
+                  <td className="px-4 py-4 text-right whitespace-nowrap w-px">
                     <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       {user.role !== 'admin' ? (
                         <>

@@ -232,6 +232,79 @@ class DataService {
     });
   }
 
+  async updateDocument(docId: string, updates: Partial<DocumentMetadata>) {
+    if (this.isFirebaseReady()) {
+      try {
+        const docRef = doc(db, "documents", docId);
+        const docSnap = await getDoc(docRef);
+        const oldData = docSnap.exists() ? docSnap.data() as DocumentMetadata : null;
+        
+        // Filter out unchanged fields to keep logs clean
+        const actualUpdates: any = {};
+        if (oldData) {
+          Object.keys(updates).forEach(key => {
+            const newVal = (updates as any)[key];
+            const oldVal = (oldData as any)[key];
+            
+            if (Array.isArray(newVal)) {
+              if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
+                actualUpdates[key] = newVal;
+              }
+            } else if (newVal !== oldVal) {
+              actualUpdates[key] = newVal;
+            }
+          });
+        } else {
+          Object.assign(actualUpdates, updates);
+        }
+
+        if (Object.keys(actualUpdates).length === 0) return;
+
+        await updateDoc(docRef, actualUpdates);
+        
+        // Log activity
+        const changedFields = Object.keys(actualUpdates);
+        let detailMsg = `Updated: ${changedFields.join(", ")}`;
+        
+        if (oldData) {
+          const changes = changedFields.map(field => {
+            const newVal = actualUpdates[field];
+            const oldVal = (oldData as any)[field];
+            if (Array.isArray(newVal)) {
+              return `${field} (${oldVal?.length || 0} -> ${newVal.length} items)`;
+            }
+            return `${field} ("${oldVal}" -> "${newVal}")`;
+          });
+          detailMsg = `Changes: ${changes.join("; ")}`;
+        }
+
+        await this.logActivity({
+          userId: auth.currentUser?.uid || "local-admin",
+          userEmail: auth.currentUser?.email || "admin@neu.edu.ph",
+          action: "update",
+          documentId: docId,
+          documentTitle: actualUpdates.title || oldData?.title || "Updated Document",
+          details: detailMsg,
+          timestamp: Timestamp.now()
+        });
+      } catch (e: any) {
+        if (e.code === 'permission-denied') {
+          handleFirestoreError(e, OperationType.UPDATE, `documents/${docId}`);
+        }
+        console.error("Firebase update document failed:", e);
+        throw e;
+      }
+    }
+
+    const local = localStorage.getItem("dochub_docs");
+    if (local) {
+      const docs = JSON.parse(local);
+      localStorage.setItem("dochub_docs", JSON.stringify(
+        docs.map((d: any) => d.id === docId ? { ...d, ...updates } : d)
+      ));
+    }
+  }
+
   async uploadFile(file: File): Promise<string> {
     if (this.isFirebaseReady()) {
       try {

@@ -18,7 +18,8 @@ import {
   Upload,
   Calendar,
   ExternalLink,
-  Shield
+  Shield,
+  Edit2
 } from "lucide-react";
 import { 
   format, 
@@ -376,6 +377,7 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
                 <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                   log.action === 'view' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' :
                   log.action === 'upload' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                  log.action === 'update' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
                   log.action === 'unblock' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
                   log.action === 'block' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' :
                   log.action === 'delete' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400' :
@@ -383,6 +385,7 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
                 }`}>
                   {log.action === 'view' && <ExternalLink size={18} />}
                   {log.action === 'upload' && <Upload size={18} />}
+                  {log.action === 'update' && <Edit2 size={18} />}
                   {(log.action === 'block' || log.action === 'unblock') && <Users size={18} />}
                   {log.action === 'delete' && <TrendingUp size={18} className="rotate-45" />}
                   {log.action === 'login' && <Calendar size={18} />}
@@ -397,6 +400,9 @@ export default function AdminDashboard({ darkMode }: { darkMode?: boolean }) {
                     )}
                     {log.action === 'upload' && (
                       <>uploaded <span className="font-semibold text-emerald-600 dark:text-emerald-400">{log.documentTitle}</span></>
+                    )}
+                    {log.action === 'update' && (
+                      <>updated <span className="font-semibold text-amber-600 dark:text-amber-400">{log.documentTitle}</span> <span className="text-[11px] opacity-70">({log.details})</span></>
                     )}
                     {log.action === 'block' && (
                       <>blocked <span className="font-semibold text-red-600 dark:text-red-400">{log.targetUserEmail || log.targetUserId}</span></>
