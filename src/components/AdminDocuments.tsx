@@ -48,7 +48,7 @@ export default function AdminDocuments() {
   });
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Manage Library</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">View, monitor, and remove documents from the system.</p>
@@ -98,17 +98,17 @@ export default function AdminDocuments() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
-                <th className="px-6 py-4">Document</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4">Program</th>
-                <th className="px-6 py-4">Uploaded</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-4 w-full">Document</th>
+                <th className="px-4 py-4 whitespace-nowrap">Category</th>
+                <th className="px-4 py-4 whitespace-nowrap text-center w-px">Program</th>
+                <th className="px-4 py-4 whitespace-nowrap text-center w-px">Uploaded</th>
+                <th className="px-4 py-4 text-right whitespace-nowrap w-px">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
+                  <td colSpan={5} className="px-3 py-20 text-center">
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-2" />
                     <p className="text-slate-500 dark:text-slate-400">Loading library...</p>
                   </td>
@@ -116,56 +116,56 @@ export default function AdminDocuments() {
               ) : filteredDocs.length > 0 ? (
                 filteredDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="max-w-xs">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.title}</p>
+                        <div className="max-w-md">
+                          <p className="text-base font-bold text-slate-900 dark:text-white truncate" title={doc.title}>{doc.title}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-semibold px-2 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-md">
+                    <td className="px-4 py-5 whitespace-nowrap">
+                      <span className="text-sm font-semibold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-md">
                         {doc.category || "General"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="px-4 py-5 whitespace-nowrap text-center">
+                      <div className="flex justify-center gap-1.5">
                         {doc.categories.length === PROGRAMS.length ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded uppercase">
-                            All Programs
+                          <span className="text-sm font-bold px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded uppercase">
+                            All
                           </span>
                         ) : (
                           doc.categories.slice(0, 3).map(cat => (
-                            <span key={cat} className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 rounded" title={cat}>
+                            <span key={cat} className="text-sm font-medium px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 rounded" title={cat}>
                               {PROGRAM_ABBREVIATIONS[cat] || cat}
                             </span>
                           ))
                         )}
-                        {doc.categories.length > 3 && doc.categories.length !== PROGRAMS.length && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 rounded">
-                            +{doc.categories.length - 3} more
+                        {doc.categories.length > 3 && doc.categories.length !== PROGRAMS.length ? (
+                          <span className="text-sm font-medium px-3 py-1 bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 rounded">
+                            +{doc.categories.length - 3}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap text-center">
                       {doc.timestamp ? format(doc.timestamp.toDate(), "MMM d, yyyy") : "Just now"}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => window.open(doc.downloadURL, '_blank')}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-all"
                           title="View File"
                         >
-                          <ExternalLink size={18} />
+                          <ExternalLink size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(doc.id, doc.title)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                           title="Delete Document"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>

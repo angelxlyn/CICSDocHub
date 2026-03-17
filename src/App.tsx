@@ -15,6 +15,8 @@ import {
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   User,
   signInWithEmailAndPassword,
@@ -94,21 +96,20 @@ export default function App() {
   useEffect(() => {
     if (!user || !profile) return;
 
-    let lastActivity = Date.now();
-    let isUserActive = true;
-    let timeoutId: any;
     const INACTIVITY_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const IDLE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for "online" status
+    const ACTIVITY_THROTTLE_MS = 10 * 1000; // 10 seconds throttle for activity updates
+
+    let lastActivityTime = Date.now();
+    localStorage.setItem(`last_activity_${user.uid}`, lastActivityTime.toString());
 
     const handleActivity = () => {
-      lastActivity = Date.now();
-      isUserActive = true;
-      
-      // Reset inactivity timer
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.log("Inactivity timeout reached. Signing out...");
-        handleSignOut();
-      }, INACTIVITY_TIMEOUT_MS);
+      const now = Date.now();
+      // Throttle updates to avoid excessive processing
+      if (now - lastActivityTime > ACTIVITY_THROTTLE_MS) {
+        lastActivityTime = now;
+        localStorage.setItem(`last_activity_${user.uid}`, now.toString());
+      }
     };
 
     // Initial update
@@ -120,32 +121,45 @@ export default function App() {
       window.addEventListener(event, handleActivity);
     });
 
-    // Start inactivity timer
-    handleActivity();
-
-    // Check activity status every 1 minute for "online" status
+    // Check activity status every 30 seconds
     const statusInterval = setInterval(() => {
       const now = Date.now();
-      // If no activity for 3 minutes, consider idle
-      if (now - lastActivity > 3 * 60 * 1000) {
-        isUserActive = false;
+      const storedLastActivity = parseInt(localStorage.getItem(`last_activity_${user.uid}`) || now.toString());
+      
+      // 1. Check for Inactivity Timeout (2 hours)
+      if (now - storedLastActivity > INACTIVITY_TIMEOUT_MS) {
+        console.log("Inactivity timeout reached. Signing out...");
+        handleSignOut();
+        return;
       }
 
-      if (isUserActive) {
+      // 2. Update Online Status (every 1 minute if active)
+      // We only update Firestore if the user was active recently (within 3 mins)
+      if (now - storedLastActivity < IDLE_THRESHOLD_MS) {
         dataService.updateUserActiveStatus(user.uid);
       }
-    }, 60 * 1000);
+    }, 30 * 1000);
 
     return () => {
       activityEvents.forEach(event => {
         window.removeEventListener(event, handleActivity);
       });
-      if (timeoutId) clearTimeout(timeoutId);
       clearInterval(statusInterval);
     };
   }, [user, profile]);
 
   useEffect(() => {
+    // Handle redirect result for mobile users
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect auth error:", error);
+      if (error.code !== 'auth/cancelled-popup-request') {
+        setAuthError({
+          title: "Authentication Error",
+          message: error.message || "Failed to complete redirect login."
+        });
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         console.log("Login attempt:", firebaseUser.email);
@@ -312,8 +326,8 @@ export default function App() {
           animate={{ opacity: 1, scale: 1 }}
           className="relative z-10 flex flex-col items-center"
         >
-          <div className="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden mb-6">
-            <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[0.75]" alt="CICS Logo" />
+          <div className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden mb-6">
+            <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[1]" alt="CICS Logo" />
           </div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white leading-tight tracking-tighter uppercase italic mb-2">
             CICS <span className="text-indigo-600 dark:text-emerald-500">DocHub</span>
@@ -351,8 +365,8 @@ export default function App() {
                 {/* Global Fixed Header */}
                 <header className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-white/10 px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm transition-colors">
                 <div className="flex items-center gap-3 shrink-0">
-                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden shrink-0">
-                    <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[0.75]" alt="CICS Logo" />
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+                    <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[1]" alt="CICS Logo" />
                   </div>
                   <div>
                     <h1 className="font-bold text-lg md:text-xl tracking-tight leading-none dark:text-white">DocHub</h1>
@@ -482,8 +496,8 @@ export default function App() {
                 `}>
                   <div className="p-6 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden shrink-0">
-                        <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[0.75]" alt="CICS Logo" />
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+                        <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[1]" alt="CICS Logo" />
                       </div>
                       <h1 className="font-bold text-xl tracking-tight dark:text-white">DocHub</h1>
                     </div>
@@ -705,29 +719,42 @@ function LoginScreen({ onAuthError, darkMode, onToggleTheme }: { onAuthError: (t
     if (loading) return;
     setLoading(true);
     setError(null);
+    
+    const isAppleDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
     try {
-      await signInWithPopup(auth, googleProvider);
+      if (isAppleDevice) {
+        // Apple devices often block popups in iframes, so we use redirect for them.
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (error: any) {
       console.error("Login failed", error);
       let errorMessage = "Login failed. Please try again.";
       let errorTitle = "Authentication Error";
 
       if (error.code === 'auth/popup-blocked') {
-        errorMessage = "The login popup was blocked by your browser. Please allow popups for this site.";
+        errorMessage = "The login popup was blocked by your browser. Please ensure popups are allowed or try using a desktop browser.";
       } else if (error.code === 'auth/popup-closed-by-user') {
         errorMessage = "The login popup was closed before completion. Please try again.";
       } else if (error.code === 'auth/unauthorized-domain') {
         errorMessage = "This domain is not authorized for login. Please contact the administrator.";
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = "Too many login attempts. Please wait a few minutes before trying again.";
+      } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
+        errorMessage = "This login method is not supported in this browser environment. Try using a standard browser like Chrome or Safari.";
       } else if (error.message) {
         errorMessage = error.message;
       }
       
       onAuthError(errorTitle, errorMessage);
     } finally {
-      // Add a small delay to prevent rapid re-clicks even after loading state resets
-      setTimeout(() => setLoading(false), 1000);
+      // For redirect (Apple devices), we don't want to set loading to false immediately
+      // as the page will be redirecting.
+      if (!isAppleDevice) {
+        setTimeout(() => setLoading(false), 1000);
+      }
     }
   };
 
@@ -836,8 +863,8 @@ function LoginScreen({ onAuthError, darkMode, onToggleTheme }: { onAuthError: (t
         <div className="bg-white dark:bg-zinc-900/30 backdrop-blur-xl border border-slate-200 dark:border-white/5 rounded-[2rem] p-8 shadow-2xl shadow-black/10 dark:shadow-black/40 transition-colors">
           {/* Header: Logo and Title in one row */}
           <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-white rounded-full shadow-lg flex items-center justify-center overflow-hidden shrink-0">
-              <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[0.9]" alt="CICS Logo" />
+            <div className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center overflow-hidden shrink-0">
+              <img src="/icons/CICS.png" className="w-full h-full object-cover scale-[1]" alt="CICS Logo" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 dark:text-white leading-tight tracking-tighter uppercase italic">
               CICS <span className="not-italic text-emerald-600 dark:text-emerald-500">DocHub</span>
@@ -847,6 +874,11 @@ function LoginScreen({ onAuthError, darkMode, onToggleTheme }: { onAuthError: (t
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-bold">
               {error}
+              {/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+                <p className="mt-2 text-[10px] opacity-80 font-medium">
+                  Tip: If login fails on your Apple device, try opening this link in Safari or use a desktop computer.
+                </p>
+              )}
             </div>
           )}
 

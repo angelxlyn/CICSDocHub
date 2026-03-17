@@ -130,21 +130,43 @@ app.post("/api/upload/drive", upload.single("file"), async (req, res) => {
     oauth2Client.setCredentials(storedTokens);
     const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-    const fileMetadata = {
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const fileMetadata: any = {
       name: file.originalname,
-      parents: process.env.GOOGLE_DRIVE_FOLDER_ID ? [process.env.GOOGLE_DRIVE_FOLDER_ID] : [],
     };
+
+    if (folderId) {
+      fileMetadata.parents = [folderId];
+    }
 
     const media = {
       mimeType: file.mimetype,
       body: fs.createReadStream(file.path),
     };
 
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: "id, webViewLink, webContentLink",
-    });
+    let response;
+    try {
+      response = await drive.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: "id, webViewLink, webContentLink",
+      });
+    } catch (uploadError: any) {
+      console.error("Primary upload failed:", uploadError.message);
+      
+      // If primary upload failed due to folder permissions, try root folder
+      if (folderId && (uploadError.code === 403 || uploadError.code === 404)) {
+        console.log("Retrying upload to root folder...");
+        delete fileMetadata.parents;
+        response = await drive.files.create({
+          requestBody: fileMetadata,
+          media: media,
+          fields: "id, webViewLink, webContentLink",
+        });
+      } else {
+        throw uploadError;
+      }
+    }
 
     // Cleanup local file
     fs.unlinkSync(file.path);
@@ -165,7 +187,13 @@ app.post("/api/upload/drive", upload.single("file"), async (req, res) => {
     });
   } catch (error: any) {
     console.error("Drive upload error:", error);
-    res.status(500).json({ error: error.message || "Failed to upload to Google Drive" });
+    
+    let errorMessage = error.message || "Failed to upload to Google Drive";
+    if (error.code === 403) {
+      errorMessage = "Insufficient permissions for the specified Google Drive folder. Please check folder access or leave GOOGLE_DRIVE_FOLDER_ID empty.";
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 

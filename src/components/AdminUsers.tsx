@@ -110,7 +110,7 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">User Management</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">Manage student access and permissions.</p>
@@ -133,7 +133,7 @@ export default function AdminUsers() {
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
                   onClick={() => handleSort('displayName')}
                 >
                   <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function AdminUsers() {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
                   onClick={() => handleSort('program')}
                 >
                   <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export default function AdminUsers() {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
                   onClick={() => handleSort('isBlocked')}
                 >
                   <div className="flex items-center gap-2">
@@ -157,20 +157,20 @@ export default function AdminUsers() {
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  className="px-4 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors whitespace-nowrap"
                   onClick={() => handleSort('createdAt')}
                 >
                   <div className="flex items-center gap-2">
                     Joined <SortIcon column="createdAt" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-4 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
+                  <td colSpan={5} className="px-3 py-20 text-center">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-2" />
                     <p className="text-slate-500 dark:text-slate-400">Loading users...</p>
                   </td>
@@ -181,8 +181,8 @@ export default function AdminUsers() {
                   className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                   onClick={() => setSelectedUser(user)}
                 >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-[180px]">
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-4 min-w-[180px]">
                       <div className="relative shrink-0">
                         <img 
                           src={user.photoURL} 
@@ -191,31 +191,31 @@ export default function AdminUsers() {
                           alt=""
                         />
                         {user.lastSeen && (Date.now() - (typeof user.lastSeen.toDate === 'function' ? user.lastSeen.toDate() : new Date((user.lastSeen.seconds || 0) * 1000)).getTime()) < 5 * 60 * 1000 && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" title="Online" />
+                          <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" title="Online" />
                         )}
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{user.displayName}</p>
-                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                           <Mail size={12} />
                           {user.email}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <span className="text-sm text-slate-600 dark:text-slate-400 font-medium" title={user.program}>
-                      {user.program ? (PROGRAM_ABBREVIATIONS[user.program] || user.program) : "Not Selected"}
+                      {user.program ? (PROGRAM_ABBREVIATIONS[user.program] || user.program) : "N/A"}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-md ${
                       user.isBlocked ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                     }`}>
                       {user.isBlocked ? 'Blocked' : 'Authorized'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                  <td className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
                   {user.createdAt ? (
                     format(
                       new Date((user.createdAt.seconds || 0) * 1000), 
@@ -223,7 +223,7 @@ export default function AdminUsers() {
                     )
                   ) : "N/A"}
                 </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-4 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       {user.role !== 'admin' ? (
                         <>
@@ -254,7 +254,7 @@ export default function AdminUsers() {
                         </>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
                             <Shield size={14} /> Admin
                           </span>
                           {isPrimaryAdmin && user.uid !== auth.currentUser?.uid && !isUserPrimaryAdmin(user.email) && (
