@@ -239,11 +239,9 @@ export default function AdminDocuments() {
               ) : filteredDocs.length > 0 ? (
                 filteredDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-5 border-r border-slate-100 dark:border-white/5">
+                    <td className="px-4 py-5 border-r border-slate-100 dark:border-white/5 max-w-0 w-full">
                       <div className="flex items-center gap-3">
-                        <div className="max-w-md">
-                          <p className="text-base font-medium text-slate-900 dark:text-white truncate" title={doc.title}>{doc.title}</p>
-                        </div>
+                        <p className="text-base font-medium text-slate-900 dark:text-white truncate" title={doc.title}>{doc.title}</p>
                       </div>
                     </td>
                     <td className="px-4 py-5 whitespace-nowrap text-center border-r border-slate-100 dark:border-white/5">
